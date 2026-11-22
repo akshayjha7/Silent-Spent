@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   LayoutDashboard,
   CreditCard,
@@ -15,7 +16,11 @@ import {
   Menu,
   X,
   Sparkles,
-  Trash2
+  Trash2,
+  IndianRupee,
+  Ban,
+  RefreshCw,
+  ExternalLink
 } from "lucide-react";
 
 import {
@@ -30,15 +35,11 @@ import "./App.css";
 function App() {
   const [active, setActive] = useState("Dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
+
   const [subscriptions, setSubscriptions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -47,6 +48,12 @@ function App() {
     next_payment_date: "",
     category: "Entertainment"
   });
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("pricing");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   const navigation = [
     { name: "Dashboard", icon: LayoutDashboard },
@@ -59,10 +66,14 @@ function App() {
   const loadSubscriptions = async () => {
     try {
       setError("");
+
       const data = await getSubscriptions();
       setSubscriptions(data);
+
     } catch (err) {
-      setError("Backend connection failed. Make sure Flask is running.");
+      setError(
+        "Backend connection failed. Make sure Flask is running."
+      );
     } finally {
       setLoading(false);
     }
@@ -83,7 +94,9 @@ function App() {
     const amount = Number(sub.amount) || 0;
 
     return total + (
-      sub.billing_cycle === "yearly" ? amount / 12 : amount
+      sub.billing_cycle === "yearly"
+        ? amount / 12
+        : amount
     );
   }, 0);
 
@@ -92,11 +105,14 @@ function App() {
   const formatDate = (date) => {
     if (!date) return "";
 
-    return new Date(date + "T00:00:00").toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    });
+    return new Date(date + "T00:00:00").toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }
+    );
   };
 
   const handleAdd = async (e) => {
@@ -119,7 +135,9 @@ function App() {
       });
 
       setShowForm(false);
+
       await loadSubscriptions();
+
     } catch (err) {
       setError("Could not add subscription. Please try again.");
     }
@@ -128,8 +146,10 @@ function App() {
   const handleDelete = async (id) => {
     try {
       setError("");
+
       await deleteSubscription(id);
       await loadSubscriptions();
+
     } catch (err) {
       setError("Could not delete subscription.");
     }
@@ -138,15 +158,23 @@ function App() {
   const handleDiscover = async (e) => {
     e.preventDefault();
 
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      setSearchError("Please enter a subscription name.");
+      return;
+    }
 
     setSearchLoading(true);
     setSearchError("");
     setSearchResults([]);
 
     try {
-      const results = await discoverSubscriptions(searchQuery);
+      const results = await discoverSubscriptions(
+        searchQuery,
+        searchType
+      );
+
       setSearchResults(results);
+
     } catch (err) {
       setSearchError(err.message || "Search failed. Try again.");
     } finally {
@@ -164,18 +192,36 @@ function App() {
     return colors[name] || "blue";
   };
 
-  const serviceIcon = (name) => name.charAt(0).toUpperCase();
+  const serviceIcon = (name) =>
+    name.charAt(0).toUpperCase();
 
   const upcoming = [...subscriptions]
     .sort((a, b) =>
-      a.next_payment_date.localeCompare(b.next_payment_date)
+      (a.next_payment_date || "").localeCompare(
+        b.next_payment_date || ""
+      )
     )
     .slice(0, 5);
+
+  const categoryTotals = subscriptions.reduce((acc, sub) => {
+    const category = sub.category || "Other";
+    const amount = Number(sub.amount) || 0;
+
+    const monthlyAmount =
+      sub.billing_cycle === "yearly"
+        ? amount / 12
+        : amount;
+
+    acc[category] = (acc[category] || 0) + monthlyAmount;
+
+    return acc;
+  }, {});
 
   return (
     <div className="app-layout">
 
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
+
         <div className="brand">
           <div className="brand-icon">
             <Droplets size={23} />
@@ -202,7 +248,9 @@ function App() {
             return (
               <button
                 key={item.name}
-                className={`nav-item ${active === item.name ? "active" : ""}`}
+                className={`nav-item ${
+                  active === item.name ? "active" : ""
+                }`}
                 onClick={() => {
                   setActive(item.name);
                   setMenuOpen(false);
@@ -220,6 +268,7 @@ function App() {
         </nav>
 
         <div className="sidebar-bottom">
+
           <button className="nav-item">
             <Settings size={19} />
             Settings
@@ -227,17 +276,20 @@ function App() {
 
           <div className="profile">
             <div className="avatar">S</div>
+
             <div>
               <h4>My Account</h4>
               <p>Personal workspace</p>
             </div>
           </div>
+
         </div>
       </aside>
 
       <main className="main-content">
 
         <header className="topbar">
+
           <button
             className="mobile-menu"
             onClick={() => setMenuOpen(true)}
@@ -256,13 +308,16 @@ function App() {
               <Bell size={19} />
               <span />
             </button>
+
             <div className="avatar">S</div>
           </div>
+
         </header>
 
         <div className="page-content">
 
           <section className="welcome-section">
+
             <div>
               <p className="date-text">
                 {new Date().toLocaleDateString("en-IN", {
@@ -276,14 +331,19 @@ function App() {
               <h1>
                 {active === "Discover"
                   ? "Discover Subscriptions"
+                  : active === "Analytics"
+                  ? "Spending Analytics"
+                  : active === "Subscriptions"
+                  ? "My Subscriptions"
+                  : active === "Silent Leak Detector"
+                  ? "Silent Leak Detector"
                   : "Good morning!"}
+
                 <span> 👋</span>
               </h1>
 
               <p className="welcome-subtitle">
-                {active === "Discover"
-                  ? "Find subscription plans, pricing and useful information."
-                  : "Here's what's happening with your subscriptions."}
+                Track the money you don't notice.
               </p>
             </div>
 
@@ -296,55 +356,90 @@ function App() {
                 Add Subscription
               </button>
             )}
+
           </section>
 
           {error && (
-            <p style={{ color: "#ff7777", marginBottom: 16 }}>
+            <div className="error-message">
               {error}
-            </p>
+            </div>
           )}
 
           {active === "Discover" ? (
 
-            <section
-              className="panel"
-              style={{ padding: 24, marginBottom: 24 }}
-            >
-              <div className="discover-icon">
-                <Sparkles size={23} />
+            <section className="panel discover-page">
+
+              <div className="discover-heading">
+                <div className="discover-icon">
+                  <Sparkles size={25} />
+                </div>
+
+                <div>
+                  <h2>Discover Subscriptions</h2>
+                  <p>
+                    Find pricing, cancellation guides and alternatives.
+                  </p>
+                </div>
               </div>
 
-              <h2>Explore Subscription Information</h2>
+              <div className="discover-tabs">
 
-              <p style={{ color: "#a5a8b8", marginTop: 8 }}>
-                Search subscription plans, pricing, official websites
-                and cancellation information.
-              </p>
+                <button
+                  className={`discover-tab ${
+                    searchType === "pricing" ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setSearchType("pricing");
+                    setSearchResults([]);
+                    setSearchError("");
+                  }}
+                >
+                  <IndianRupee size={18} />
+                  Pricing
+                </button>
+
+                <button
+                  className={`discover-tab ${
+                    searchType === "cancellation" ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setSearchType("cancellation");
+                    setSearchResults([]);
+                    setSearchError("");
+                  }}
+                >
+                  <Ban size={18} />
+                  Cancellation
+                </button>
+
+                <button
+                  className={`discover-tab ${
+                    searchType === "alternatives" ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setSearchType("alternatives");
+                    setSearchResults([]);
+                    setSearchError("");
+                  }}
+                >
+                  <RefreshCw size={18} />
+                  Alternatives
+                </button>
+
+              </div>
 
               <form
+                className="discover-search"
                 onSubmit={handleDiscover}
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  marginTop: 24,
-                  flexWrap: "wrap"
-                }}
               >
+
                 <input
                   type="text"
-                  placeholder="Search Netflix, Spotify, Amazon Prime..."
+                  placeholder="Search Netflix, Spotify, Prime..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: 180,
-                    padding: 14,
-                    borderRadius: 9,
-                    border: "1px solid #373b4e",
-                    background: "#222535",
-                    color: "white",
-                    outline: "none"
-                  }}
+                  onChange={(e) =>
+                    setSearchQuery(e.target.value)
+                  }
                 />
 
                 <button
@@ -355,133 +450,285 @@ function App() {
                   <Search size={18} />
                   {searchLoading ? "Searching..." : "Search"}
                 </button>
+
               </form>
 
-              {searchLoading && (
-                <p style={{ marginTop: 24 }}>
-                  Searching with SerpAPI...
-                </p>
-              )}
+              <p className="search-info">
+                Powered by SerpAPI web search.
+              </p>
 
               {searchError && (
-                <p style={{ color: "#ff7777", marginTop: 20 }}>
+                <div className="error-message">
                   {searchError}
-                </p>
+                </div>
               )}
 
-              {searchResults.length > 0 && (
-                <div style={{ marginTop: 28 }}>
-                  <h3 style={{ marginBottom: 15 }}>
-                    Search Results ({searchResults.length})
-                  </h3>
+              {searchLoading && (
+                <div className="empty-discover">
+                  <Search size={30} />
+                  <h3>Searching the web...</h3>
+                  <p>Please wait while we find results.</p>
+                </div>
+              )}
+
+              {!searchLoading && searchResults.length > 0 && (
+                <div className="search-results">
+
+                  <div className="results-heading">
+                    <h3>Search Results</h3>
+                    <span>{searchResults.length} results</span>
+                  </div>
 
                   {searchResults.map((result, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        padding: 18,
-                        marginBottom: 12,
-                        background: "#202333",
-                        border: "1px solid #303449",
-                        borderRadius: 10
-                      }}
+                    <article
+                      className="search-result-card"
+                      key={result.link || index}
                     >
-                      <h3 style={{ color: "#ffffff" }}>
-                        {result.title}
-                      </h3>
 
-                      <p
-                        style={{
-                          color: "#a5a8b8",
-                          marginTop: 9,
-                          lineHeight: 1.6
-                        }}
-                      >
-                        {result.snippet}
-                      </p>
+                      <div className="result-number">
+                        {index + 1}
+                      </div>
 
-                      <a
-                        href={result.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: "inline-block",
-                          color: "#a99aff",
-                          marginTop: 12,
-                          textDecoration: "none"
-                        }}
-                      >
-                        Visit Website ↗
-                      </a>
-                    </div>
+                      <div className="result-content">
+
+                        <h3>{result.title}</h3>
+
+                        <p>{result.snippet}</p>
+
+                        <span className="result-source">
+                          {result.source || "Web Search"}
+                        </span>
+
+                        {result.link && (
+                          <a
+                            href={result.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Visit Website
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
+
+                      </div>
+                    </article>
                   ))}
+
                 </div>
               )}
 
               {!searchLoading &&
                 !searchError &&
                 searchResults.length === 0 && (
-                  <p style={{ color: "#9296a8", marginTop: 25 }}>
-                    Search for a subscription to discover information.
-                  </p>
+                  <div className="empty-discover">
+                    <Sparkles size={35} />
+                    <h3>Start Discovering</h3>
+                    <p>
+                      Search any subscription to explore its
+                      pricing and useful information.
+                    </p>
+                  </div>
                 )}
+
+            </section>
+
+          ) : active === "Analytics" ? (
+
+            <section className="analytics-page">
+
+              <div className="stats-grid">
+
+                <div className="stat-card">
+                  <span>Monthly Spending</span>
+                  <h2>{formatMoney(monthly)}</h2>
+                </div>
+
+                <div className="stat-card">
+                  <span>Yearly Spending</span>
+                  <h2>{formatMoney(yearly)}</h2>
+                </div>
+
+                <div className="stat-card">
+                  <span>Active Subscriptions</span>
+                  <h2>{subscriptions.length}</h2>
+                </div>
+
+              </div>
+
+              <div className="panel analytics-panel">
+
+                <h3>Category-wise Spending</h3>
+
+                <p>
+                  Monthly spending breakdown by category.
+                </p>
+
+                {Object.keys(categoryTotals).length === 0 ? (
+                  <div className="empty-discover">
+                    <ChartNoAxesCombined size={32} />
+                    <p>No spending data available yet.</p>
+                  </div>
+                ) : (
+
+                  Object.entries(categoryTotals).map(
+                    ([category, amount]) => (
+
+                      <div
+                        className="category-row"
+                        key={category}
+                      >
+
+                        <div className="category-info">
+                          <strong>{category}</strong>
+                          <span>{formatMoney(amount)}</span>
+                        </div>
+
+                        <div className="category-track">
+                          <div
+                            className="category-fill"
+                            style={{
+                              width: `${
+                                monthly > 0
+                                  ? Math.min(
+                                      amount / monthly * 100,
+                                      100
+                                    )
+                                  : 0
+                              }%`
+                            }}
+                          />
+                        </div>
+
+                      </div>
+                    )
+                  )
+
+                )}
+
+              </div>
+
+            </section>
+
+          ) : active === "Silent Leak Detector" ? (
+
+            <section className="panel leak-page">
+
+              <div className="leak-heading">
+                <div className="leak-icon">
+                  <Droplets size={24} />
+                </div>
+                <span>SMART INSIGHT</span>
+              </div>
+
+              <h2>Find Your Silent Leaks</h2>
+
+              <p>
+                Review your subscriptions and understand how much
+                you spend on recurring services.
+              </p>
+
+              <div className="leak-total">
+                <span>Total yearly subscription cost</span>
+                <h2>{formatMoney(yearly)}</h2>
+              </div>
+
+              <h3>Your Subscriptions</h3>
+
+              {subscriptions.length === 0 ? (
+                <p>No subscriptions to review.</p>
+              ) : (
+
+                subscriptions.map((sub) => {
+
+                  const annualCost =
+                    Number(sub.amount) *
+                    (sub.billing_cycle === "yearly" ? 1 : 12);
+
+                  return (
+                    <div
+                      className="subscription-item"
+                      key={sub.id}
+                    >
+
+                      <div className="service-icon blue">
+                        {serviceIcon(sub.name)}
+                      </div>
+
+                      <div className="service-details">
+                        <h4>{sub.name}</h4>
+                        <p>{sub.category}</p>
+                      </div>
+
+                      <div className="payment-details">
+                        <h4>{formatMoney(annualCost)}</h4>
+                        <p>Yearly cost</p>
+                      </div>
+
+                    </div>
+                  );
+                })
+
+              )}
+
+              <p className="search-info">
+                Review each subscription before deciding whether
+                you still need it.
+              </p>
+
             </section>
 
           ) : (
-
             <>
-
               {showForm && (
-                <div style={modalOverlay}>
-                  <form onSubmit={handleAdd} style={modalBox}>
-                    <div style={modalHeader}>
-                      <h2 style={{ margin: 0 }}>
-                        Add Subscription
-                      </h2>
+                <div className="modal-overlay">
+                  <form
+                    className="subscription-form"
+                    onSubmit={handleAdd}
+                  >
+                    <div className="modal-header">
+                      <h2>Add Subscription</h2>
 
                       <button
                         type="button"
+                        className="close-button"
                         onClick={() => setShowForm(false)}
-                        style={closeButton}
                       >
                         <X />
                       </button>
                     </div>
 
-                    <label style={formLabel}>
-                      Subscription name
-                    </label>
-
+                    <label>Subscription Name</label>
                     <input
-                      style={formInput}
                       type="text"
                       placeholder="e.g. Netflix"
                       value={form.name}
                       onChange={(e) =>
-                        setForm({ ...form, name: e.target.value })
+                        setForm({
+                          ...form,
+                          name: e.target.value
+                        })
                       }
                       required
                     />
 
-                    <label style={formLabel}>Amount (₹)</label>
-
+                    <label>Amount (₹)</label>
                     <input
-                      style={formInput}
                       type="number"
                       min="1"
                       step="0.01"
                       placeholder="Enter amount"
                       value={form.amount}
                       onChange={(e) =>
-                        setForm({ ...form, amount: e.target.value })
+                        setForm({
+                          ...form,
+                          amount: e.target.value
+                        })
                       }
                       required
                     />
 
-                    <label style={formLabel}>Billing cycle</label>
-
+                    <label>Billing Cycle</label>
                     <select
-                      style={formInput}
                       value={form.billing_cycle}
                       onChange={(e) =>
                         setForm({
@@ -494,12 +741,8 @@ function App() {
                       <option value="yearly">Yearly</option>
                     </select>
 
-                    <label style={formLabel}>
-                      Next payment date
-                    </label>
-
+                    <label>Next Payment Date</label>
                     <input
-                      style={formInput}
                       type="date"
                       value={form.next_payment_date}
                       onChange={(e) =>
@@ -511,10 +754,8 @@ function App() {
                       required
                     />
 
-                    <label style={formLabel}>Category</label>
-
+                    <label>Category</label>
                     <select
-                      style={formInput}
                       value={form.category}
                       onChange={(e) =>
                         setForm({
@@ -533,12 +774,7 @@ function App() {
 
                     <button
                       type="submit"
-                      className="add-button"
-                      style={{
-                        width: "100%",
-                        justifyContent: "center",
-                        marginTop: 20
-                      }}
+                      className="add-button save-button"
                     >
                       <Plus size={18} />
                       Save Subscription
@@ -558,7 +794,6 @@ function App() {
                   </div>
                   <h2>{formatMoney(monthly)}</h2>
                   <p className="stat-description">
-                    <TrendingUp size={15} />
                     Your recurring monthly cost
                   </p>
                 </div>
@@ -583,9 +818,7 @@ function App() {
                       <CreditCard />
                     </div>
                   </div>
-                  <h2>
-                    {String(subscriptions.length).padStart(2, "0")}
-                  </h2>
+                  <h2>{subscriptions.length}</h2>
                   <p className="stat-description">
                     Currently tracking subscriptions
                   </p>
@@ -598,9 +831,9 @@ function App() {
                       <Droplets />
                     </div>
                   </div>
-                  <h2 className="saving-amount">₹0</h2>
+                  <h2>₹0</h2>
                   <p className="stat-description">
-                    Mark unused subscriptions to track savings
+                    Review unused subscriptions
                   </p>
                 </div>
 
@@ -629,7 +862,9 @@ function App() {
                         )
                       }
                     >
-                      {active === "Subscriptions" ? "Dashboard" : "View all"}
+                      {active === "Subscriptions"
+                        ? "Dashboard"
+                        : "View all"}
                       <ArrowUpRight size={15} />
                     </button>
                   </div>
@@ -637,48 +872,51 @@ function App() {
                   <div className="subscription-list">
                     {loading ? (
                       <p>Loading subscriptions...</p>
-                    ) : (active === "Subscriptions"
-                        ? subscriptions
-                        : upcoming).length === 0 ? (
-                      <p>
-                        No subscriptions yet. Add your first subscription.
-                      </p>
                     ) : (
                       (active === "Subscriptions"
                         ? subscriptions
                         : upcoming
-                      ).map((sub) => (
-                        <div
-                          className="subscription-item"
-                          key={sub.id}
-                        >
+                      ).length === 0 ? (
+                        <p>No subscriptions yet.</p>
+                      ) : (
+                        (active === "Subscriptions"
+                          ? subscriptions
+                          : upcoming
+                        ).map((sub) => (
                           <div
-                            className={`service-icon ${serviceColor(sub.name)}`}
+                            className="subscription-item"
+                            key={sub.id}
                           >
-                            {serviceIcon(sub.name)}
-                          </div>
+                            <div
+                              className={`service-icon ${serviceColor(sub.name)}`}
+                            >
+                              {serviceIcon(sub.name)}
+                            </div>
 
-                          <div className="service-details">
-                            <h4>{sub.name}</h4>
-                            <p>
-                              {sub.category} · {sub.billing_cycle}
-                            </p>
-                          </div>
+                            <div className="service-details">
+                              <h4>{sub.name}</h4>
+                              <p>
+                                {sub.category} · {sub.billing_cycle}
+                              </p>
+                            </div>
 
-                          <div className="payment-details">
-                            <h4>{formatMoney(sub.amount)}</h4>
-                            <p>{formatDate(sub.next_payment_date)}</p>
-                          </div>
+                            <div className="payment-details">
+                              <h4>{formatMoney(sub.amount)}</h4>
+                              <p>
+                                {formatDate(sub.next_payment_date)}
+                              </p>
+                            </div>
 
-                          <button
-                            onClick={() => handleDelete(sub.id)}
-                            title="Delete subscription"
-                            style={deleteButton}
-                          >
-                            <Trash2 size={17} />
-                          </button>
-                        </div>
-                      ))
+                            <button
+                              className="delete-button"
+                              onClick={() => handleDelete(sub.id)}
+                              title="Delete subscription"
+                            >
+                              <Trash2 size={17} />
+                            </button>
+                          </div>
+                        ))
+                      )
                     )}
                   </div>
                 </div>
@@ -699,15 +937,18 @@ function App() {
                   </p>
 
                   <div className="savings-box">
-                    <span>Potential yearly savings</span>
-                    <h2>₹0</h2>
+                    <span>Total yearly spending</span>
+                    <h2>{formatMoney(yearly)}</h2>
                   </div>
 
                   <button
                     className="leak-button"
-                    onClick={() => setActive("Silent Leak Detector")}
+                    onClick={() =>
+                      setActive("Silent Leak Detector")
+                    }
                   >
-                    Explore savings <ArrowUpRight size={17} />
+                    Explore savings
+                    <ArrowUpRight size={17} />
                   </button>
                 </div>
 
@@ -723,13 +964,16 @@ function App() {
                   <div>
                     <h3>Discover Subscriptions</h3>
                     <p>
-                      Explore subscription details, cancellation guides
-                      and smarter alternatives.
+                      Explore subscription pricing,
+                      cancellation guides and alternatives.
                     </p>
                   </div>
 
-                  <button onClick={() => setActive("Discover")}>
-                    Explore Discover <ArrowUpRight size={17} />
+                  <button
+                    onClick={() => setActive("Discover")}
+                  >
+                    Explore Discover
+                    <ArrowUpRight size={17} />
                   </button>
                 </div>
 
@@ -739,18 +983,16 @@ function App() {
                   </div>
 
                   <div>
-                    <h3>Stay in control</h3>
+                    <h3>Stay in Control</h3>
                     <p>
-                      Keep track of your renewal dates and never miss
-                      an upcoming payment.
+                      Keep track of renewal dates and
+                      upcoming payments.
                     </p>
                   </div>
                 </div>
 
               </section>
-
             </>
-
           )}
 
           <footer>
@@ -763,69 +1005,5 @@ function App() {
     </div>
   );
 }
-
-const modalOverlay = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.75)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-  padding: 16
-};
-
-const modalBox = {
-  background: "#171923",
-  border: "1px solid #303344",
-  borderRadius: 16,
-  padding: 24,
-  width: "100%",
-  maxWidth: 430,
-  maxHeight: "90vh",
-  overflowY: "auto",
-  color: "#fff"
-};
-
-const modalHeader = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 22
-};
-
-const closeButton = {
-  background: "transparent",
-  border: 0,
-  color: "#fff",
-  cursor: "pointer"
-};
-
-const formLabel = {
-  display: "block",
-  fontSize: 13,
-  marginBottom: 7,
-  marginTop: 14,
-  color: "#c5c7d3"
-};
-
-const formInput = {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "12px",
-  borderRadius: 8,
-  border: "1px solid #373b4e",
-  background: "#222535",
-  color: "#fff",
-  outline: "none"
-};
-
-const deleteButton = {
-  background: "transparent",
-  border: "none",
-  color: "#ff7777",
-  cursor: "pointer",
-  padding: 8
-};
 
 export default App;
