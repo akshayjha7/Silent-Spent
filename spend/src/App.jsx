@@ -17,40 +17,50 @@ import {
   X,
   Sparkles,
   Trash2,
-  CheckCircle,
-  RotateCcw,
-  ExternalLink
+  RefreshCw,
+  ExternalLink,
+  ShieldCheck,
+  Activity,
+  Target
 } from "lucide-react";
 
 import {
   getSubscriptions,
   addSubscription,
   deleteSubscription,
-  updateSubscriptionUsage,
+  discoverSubscriptions,
   getInsights,
-  discoverSubscriptions
+  updateSubscriptionUsage
 } from "./api";
 
 import "./App.css";
 
 function App() {
+
   const [active, setActive] = useState("Dashboard");
+
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [subscriptions, setSubscriptions] = useState([]);
-  const [insights, setInsights] = useState({
-    total_yearly_spending: 0,
-    potential_yearly_savings: 0,
-    unused_subscriptions: 0,
-    active_subscriptions: 0
-  });
 
-  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
 
+  const [showForm, setShowForm] = useState(false);
+
+  const [insights, setInsights] = useState(null);
+
+  const [insightLoading, setInsightLoading] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [searchType, setSearchType] = useState("pricing");
+
   const [searchResults, setSearchResults] = useState([]);
+
   const [searchLoading, setSearchLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -69,44 +79,58 @@ function App() {
     { name: "Discover", icon: Search }
   ];
 
-  // Load subscriptions and insights
+  // LOAD SUBSCRIPTIONS
 
-  const loadData = async () => {
+  const loadSubscriptions = async () => {
     try {
       setError("");
 
-      const [subscriptionData, insightData] =
-        await Promise.all([
-          getSubscriptions(),
-          getInsights()
-        ]);
+      const data = await getSubscriptions();
 
-      setSubscriptions(subscriptionData);
-      setInsights(insightData);
+      setSubscriptions(data);
 
     } catch (err) {
-      setError(
-        "Backend connection failed. Make sure Flask is running."
-      );
+      setError("Backend connection failed. Check Flask server.");
     } finally {
       setLoading(false);
     }
   };
 
+  // LOAD INSIGHTS
+
+  const loadInsights = async () => {
+    try {
+      setInsightLoading(true);
+
+      const data = await getInsights();
+
+      setInsights(data);
+
+    } catch (err) {
+      setError("Could not load financial insights.");
+    } finally {
+      setInsightLoading(false);
+    }
+  };
+
+  // INITIAL LOAD
+
   useEffect(() => {
-    loadData();
+    loadSubscriptions();
+    loadInsights();
   }, []);
 
-  // Currency formatting
+  // MONEY FORMAT
 
-  const formatMoney = (amount) =>
-    new Intl.NumberFormat("en-IN", {
+  const formatMoney = (amount) => {
+    return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 0
     }).format(Number(amount) || 0);
+  };
 
-  // Monthly spending
+  // MONTHLY TOTAL
 
   const monthly = subscriptions.reduce((total, sub) => {
     const amount = Number(sub.amount) || 0;
@@ -120,30 +144,47 @@ function App() {
 
   const yearly = monthly * 12;
 
-  // Date formatting
+  // UPCOMING PAYMENTS
+
+  const upcoming = [...subscriptions]
+    .sort((a, b) =>
+      a.next_payment_date.localeCompare(b.next_payment_date)
+    )
+    .slice(0, 5);
+
+  // DATE FORMAT
 
   const formatDate = (date) => {
     if (!date) return "";
 
-    const parsedDate = new Date(date + "T00:00:00");
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      return date;
-    }
-
-    return parsedDate.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    });
+    return new Date(date + "T00:00:00")
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      });
   };
 
-  // Add subscription
+  // SERVICE COLOR
+
+  const serviceColor = (name) => {
+    const colors = {
+      Netflix: "red",
+      Spotify: "green",
+      "Amazon Prime": "orange",
+      YouTube: "red"
+    };
+
+    return colors[name] || "blue";
+  };
+
+  // ADD SUBSCRIPTION
 
   const handleAdd = async (e) => {
     e.preventDefault();
 
     try {
+      setSaving(true);
       setError("");
 
       await addSubscription({
@@ -161,14 +202,17 @@ function App() {
 
       setShowForm(false);
 
-      await loadData();
+      await loadSubscriptions();
+      await loadInsights();
 
     } catch (err) {
       setError("Could not add subscription.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Delete subscription
+  // DELETE SUBSCRIPTION
 
   const handleDelete = async (id) => {
     try {
@@ -176,29 +220,31 @@ function App() {
 
       await deleteSubscription(id);
 
-      await loadData();
+      await loadSubscriptions();
+      await loadInsights();
 
     } catch (err) {
       setError("Could not delete subscription.");
     }
   };
 
-  // Mark unused or restore subscription
+  // UPDATE USED / UNUSED
 
-  const handleUsage = async (id, isUsed) => {
+  const handleUsageChange = async (id, is_used) => {
     try {
       setError("");
 
-      await updateSubscriptionUsage(id, isUsed);
+      await updateSubscriptionUsage(id, is_used);
 
-      await loadData();
+      await loadSubscriptions();
+      await loadInsights();
 
     } catch (err) {
-      setError("Could not update subscription status.");
+      setError("Could not update subscription usage.");
     }
   };
 
-  // Discover search
+  // DISCOVER SEARCH
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -208,61 +254,37 @@ function App() {
     try {
       setSearchLoading(true);
       setError("");
+      setSearchResults([]);
 
       const results = await discoverSubscriptions(
-        searchQuery.trim()
+        searchQuery,
+        searchType
       );
 
       setSearchResults(results);
 
     } catch (err) {
       setError(err.message || "Search failed.");
-      setSearchResults([]);
-
     } finally {
       setSearchLoading(false);
     }
   };
-
-  const serviceColor = (name) => {
-    const colors = {
-      Netflix: "red",
-      Spotify: "green",
-      "Amazon Prime": "orange"
-    };
-
-    return colors[name] || "blue";
-  };
-
-  const serviceIcon = (name) =>
-    name?.charAt(0).toUpperCase() || "?";
-
-  const upcoming = [...subscriptions]
-    .sort((a, b) =>
-      (a.next_payment_date || "").localeCompare(
-        b.next_payment_date || ""
-      )
-    )
-    .slice(0, 5);
-
-  const unusedSubscriptions = subscriptions.filter(
-    (sub) => !sub.is_used
-  );
-
-  const usedSubscriptions = subscriptions.filter(
-    (sub) => Boolean(sub.is_used)
-  );
   return (
     <div className="app-layout">
 
+      {/* SIDEBAR */}
+
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
+
         <div className="brand">
           <div className="brand-icon">
             <Droplets size={23} />
           </div>
+
           <span>
             Silent<span className="brand-highlight">Spend</span>
           </span>
+
           <button
             className="close-menu"
             onClick={() => setMenuOpen(false)}
@@ -280,7 +302,9 @@ function App() {
             return (
               <button
                 key={item.name}
-                className={`nav-item ${active === item.name ? "active" : ""}`}
+                className={`nav-item ${
+                  active === item.name ? "active" : ""
+                }`}
                 onClick={() => {
                   setActive(item.name);
                   setMenuOpen(false);
@@ -294,24 +318,35 @@ function App() {
         </nav>
 
         <div className="sidebar-bottom">
-          <button className="nav-item">
+
+          <button
+            className={`nav-item ${
+              active === "Settings" ? "active" : ""
+            }`}
+            onClick={() => setActive("Settings")}
+          >
             <Settings size={19} />
             Settings
           </button>
 
           <div className="profile">
             <div className="avatar">S</div>
+
             <div>
               <h4>My Account</h4>
               <p>Personal workspace</p>
             </div>
           </div>
+
         </div>
       </aside>
+
+      {/* MAIN CONTENT */}
 
       <main className="main-content">
 
         <header className="topbar">
+
           <button
             className="mobile-menu"
             onClick={() => setMenuOpen(true)}
@@ -328,28 +363,36 @@ function App() {
           <div className="top-actions">
             <button className="notification">
               <Bell size={19} />
-              <span />
             </button>
+
             <div className="avatar">S</div>
           </div>
+
         </header>
 
         <div className="page-content">
 
           {error && (
-            <p style={{ color: "#ff7777", marginBottom: 16 }}>
+            <div className="error-message">
               {error}
-            </p>
+            </div>
           )}
+
+          {/* DASHBOARD */}
 
           {active === "Dashboard" && (
             <>
+
               <section className="welcome-section">
                 <div>
                   <p className="date-text">
-                    YOUR FINANCIAL OVERVIEW
+                    SUNDAY, NOVEMBER 22, 2026
                   </p>
-                  <h1>Good morning! 👋</h1>
+
+                  <h1>
+                    Good morning! 👋
+                  </h1>
+
                   <p className="welcome-subtitle">
                     Here's what's happening with your subscriptions.
                   </p>
@@ -364,70 +407,80 @@ function App() {
                 </button>
               </section>
 
+              {/* STATISTICS */}
+
               <section className="stats-grid">
 
                 <div className="stat-card">
                   <div className="stat-top">
                     <span>Monthly Spending</span>
-                    <div className="stat-icon purple">
-                      <CircleDollarSign />
-                    </div>
+                    <CircleDollarSign />
                   </div>
+
                   <h2>{formatMoney(monthly)}</h2>
+
                   <p className="stat-description">
                     <TrendingUp size={15} />
-                    Monthly recurring cost
+                    Recurring monthly cost
                   </p>
                 </div>
 
                 <div className="stat-card">
                   <div className="stat-top">
-                    <span>Estimated Yearly Cost</span>
-                    <div className="stat-icon blue">
-                      <ChartNoAxesCombined />
-                    </div>
+                    <span>Yearly Spending</span>
+                    <ChartNoAxesCombined />
                   </div>
+
                   <h2>{formatMoney(yearly)}</h2>
+
                   <p className="stat-description">
-                    Estimated annual spending
+                    Estimated yearly cost
                   </p>
                 </div>
 
                 <div className="stat-card">
                   <div className="stat-top">
                     <span>Active Subscriptions</span>
-                    <div className="stat-icon green">
-                      <CreditCard />
-                    </div>
+                    <CreditCard />
                   </div>
+
                   <h2>
-                    {String(subscriptions.length).padStart(2, "0")}
+                    {String(
+                      insights?.active_subscriptions ??
+                      subscriptions.length
+                    ).padStart(2, "0")}
                   </h2>
+
                   <p className="stat-description">
-                    Total tracked subscriptions
+                    Currently tracking
                   </p>
                 </div>
 
                 <div className="stat-card">
                   <div className="stat-top">
                     <span>Potential Savings</span>
-                    <div className="stat-icon orange">
-                      <Droplets />
-                    </div>
+                    <Droplets />
                   </div>
+
                   <h2 className="saving-amount">
-                    {formatMoney(insights.potential_yearly_savings)}
+                    {formatMoney(
+                      insights?.potential_yearly_savings || 0
+                    )}
                   </h2>
+
                   <p className="stat-description">
-                    Yearly unused subscription cost
+                    Possible yearly savings
                   </p>
                 </div>
 
               </section>
 
+              {/* DASHBOARD PANELS */}
+
               <section className="dashboard-grid">
 
                 <div className="panel subscription-panel">
+
                   <div className="panel-heading">
                     <div>
                       <h3>Upcoming Payments</h3>
@@ -443,18 +496,21 @@ function App() {
                   </div>
 
                   <div className="subscription-list">
+
                     {loading ? (
                       <p>Loading subscriptions...</p>
                     ) : upcoming.length === 0 ? (
                       <p>No subscriptions yet. Add your first one.</p>
                     ) : (
+
                       upcoming.map((sub) => (
                         <div
                           className="subscription-item"
                           key={sub.id}
                         >
+
                           <div className={`service-icon ${serviceColor(sub.name)}`}>
-                            {serviceIcon(sub.name)}
+                            {sub.name.charAt(0).toUpperCase()}
                           </div>
 
                           <div className="service-details">
@@ -467,62 +523,102 @@ function App() {
                             <p>{formatDate(sub.next_payment_date)}</p>
                           </div>
 
-                          <button
-                            onClick={() => handleDelete(sub.id)}
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              color: "#ff7777",
-                              cursor: "pointer"
-                            }}
-                            title="Delete"
-                          >
-                            <Trash2 size={17} />
-                          </button>
                         </div>
                       ))
+
                     )}
+
                   </div>
                 </div>
 
                 <div className="panel leak-panel">
+
                   <div className="leak-heading">
-                    <div className="leak-icon">
-                      <Droplets size={22} />
-                    </div>
+                    <Droplets size={22} />
                     <span>SMART INSIGHT</span>
                   </div>
 
                   <h3>Silent Leak Detector</h3>
+
                   <p>
-                    Find unused subscriptions and discover
-                    how much money you could save.
+                    Find unused subscriptions and understand
+                    where your money could be saved.
                   </p>
 
                   <div className="savings-box">
                     <span>Potential yearly savings</span>
+
                     <h2>
-                      {formatMoney(insights.potential_yearly_savings)}
+                      {formatMoney(
+                        insights?.potential_yearly_savings || 0
+                      )}
                     </h2>
                   </div>
 
                   <button
                     className="leak-button"
-                    onClick={() => setActive("Silent Leak Detector")}
+                    onClick={() =>
+                      setActive("Silent Leak Detector")
+                    }
                   >
-                    Explore savings <ArrowUpRight size={17} />
+                    Explore savings
+                    <ArrowUpRight size={17} />
                   </button>
+
                 </div>
 
               </section>
+
+              {/* BOTTOM PANELS */}
+
+              <section className="bottom-grid">
+
+                <div className="panel discover-panel">
+                  <Sparkles size={24} />
+
+                  <div>
+                    <h3>Discover Subscriptions</h3>
+
+                    <p>
+                      Explore pricing, cancellation guides
+                      and smarter alternatives.
+                    </p>
+                  </div>
+
+                  <button onClick={() => setActive("Discover")}>
+                    Explore Discover
+                    <ArrowUpRight size={17} />
+                  </button>
+                </div>
+
+                <div className="panel reminder-panel">
+                  <CalendarDays size={22} />
+
+                  <div>
+                    <h3>Stay in control</h3>
+
+                    <p>
+                      Keep track of renewal dates and
+                      upcoming payments.
+                    </p>
+                  </div>
+                </div>
+
+              </section>
+
             </>
           )}
 
+          {/* SUBSCRIPTIONS PAGE */}
+
           {active === "Subscriptions" && (
             <section>
+
               <div className="welcome-section">
                 <div>
+                  <p className="date-text">YOUR EXPENSES</p>
                   <h1>My Subscriptions</h1>
+
                   <p className="welcome-subtitle">
                     Manage all your recurring payments.
                   </p>
@@ -532,153 +628,117 @@ function App() {
                   className="add-button"
                   onClick={() => setShowForm(true)}
                 >
-                  <Plus size={18} /> Add Subscription
+                  <Plus size={19} />
+                  Add Subscription
                 </button>
               </div>
 
               <div className="panel subscription-panel">
-                <div className="subscription-list">
-                  {subscriptions.map((sub) => (
-                    <div
-                      className="subscription-item"
-                      key={sub.id}
-                    >
-                      <div className={`service-icon ${serviceColor(sub.name)}`}>
-                        {serviceIcon(sub.name)}
-                      </div>
 
-                      <div className="service-details">
-                        <h4>{sub.name}</h4>
-                        <p>{sub.category}</p>
-                      </div>
-
-                      <div className="payment-details">
-                        <h4>{formatMoney(sub.amount)}</h4>
-                        <p>{sub.billing_cycle}</p>
-                      </div>
-
-                      <button
-                        onClick={() => handleDelete(sub.id)}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "#ff7777",
-                          cursor: "pointer"
-                        }}
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {active === "Silent Leak Detector" && (
-            <section>
-              <div className="welcome-section">
-                <div>
-                  <h1>Silent Leak Detector</h1>
-                  <p className="welcome-subtitle">
-                    Identify unused subscriptions and potential savings.
-                  </p>
-                </div>
-              </div>
-
-              <section className="stats-grid">
-                <div className="stat-card">
-                  <span>Total Yearly Spending</span>
-                  <h2>{formatMoney(insights.total_yearly_spending)}</h2>
-                </div>
-
-                <div className="stat-card">
-                  <span>Potential Yearly Savings</span>
-                  <h2 className="saving-amount">
-                    {formatMoney(insights.potential_yearly_savings)}
-                  </h2>
-                </div>
-
-                <div className="stat-card">
-                  <span>Unused Subscriptions</span>
-                  <h2>{insights.unused_subscriptions}</h2>
-                </div>
-
-                <div className="stat-card">
-                  <span>Used Subscriptions</span>
-                  <h2>{insights.active_subscriptions}</h2>
-                </div>
-              </section>
-
-              <div className="panel subscription-panel">
                 <div className="panel-heading">
                   <div>
-                    <h3>Track Subscription Usage</h3>
-                    <p>Mark subscriptions you no longer use.</p>
+                    <h3>All Subscriptions</h3>
+                    <p>{subscriptions.length} subscriptions found</p>
                   </div>
+
+                  <button
+                    className="view-button"
+                    onClick={loadSubscriptions}
+                  >
+                    <RefreshCw size={15} />
+                    Refresh
+                  </button>
                 </div>
 
                 <div className="subscription-list">
-                  {subscriptions.length === 0 ? (
-                    <p>No subscriptions available.</p>
+
+                  {loading ? (
+                    <p>Loading...</p>
+                  ) : subscriptions.length === 0 ? (
+                    <p>No subscriptions found.</p>
                   ) : (
+
                     subscriptions.map((sub) => (
                       <div
                         className="subscription-item"
                         key={sub.id}
                       >
+
                         <div className={`service-icon ${serviceColor(sub.name)}`}>
-                          {serviceIcon(sub.name)}
+                          {sub.name.charAt(0).toUpperCase()}
                         </div>
 
                         <div className="service-details">
                           <h4>{sub.name}</h4>
-                          <p>{sub.is_used ? "Currently used" : "Marked unused"}</p>
+                          <p>{sub.category} · {sub.billing_cycle}</p>
                         </div>
 
                         <div className="payment-details">
-                          <h4>
-                            {formatMoney(
-                              sub.billing_cycle === "yearly"
-                                ? sub.amount
-                                : sub.amount * 12
-                            )}
-                          </h4>
-                          <p>Per year</p>
+                          <h4>{formatMoney(sub.amount)}</h4>
+                          <p>{formatDate(sub.next_payment_date)}</p>
                         </div>
 
                         <button
-                          className="view-button"
+                          className="usage-toggle"
                           onClick={() =>
-                            handleUsage(sub.id, !Boolean(sub.is_used))
+                            handleUsageChange(
+                              sub.id,
+                              !Boolean(sub.is_used)
+                            )
                           }
                         >
-                          {sub.is_used ? (
-                            <>Mark Unused <Droplets size={15} /></>
-                          ) : (
-                            <>Restore <RotateCcw size={15} /></>
-                          )}
+                          {Boolean(sub.is_used) ? "Mark Unused" : "Mark Used"}
                         </button>
+
+                        <button
+                          className="delete-button"
+                          onClick={() => handleDelete(sub.id)}
+                          title="Delete subscription"
+                        >
+                          <Trash2 size={17} />
+                        </button>
+
                       </div>
                     ))
+
                   )}
+
                 </div>
+
               </div>
+
             </section>
           )}
 
+          {/* ANALYTICS PAGE */}
+
           {active === "Analytics" && (
             <section>
+
               <div className="welcome-section">
                 <div>
-                  <h1>Spending Analytics</h1>
+                  <p className="date-text">FINANCIAL OVERVIEW</p>
+                  <h1>Analytics</h1>
+
                   <p className="welcome-subtitle">
-                    Understand where your subscription money goes.
+                    Understand your subscription spending.
                   </p>
                 </div>
+
+                <button
+                  className="view-button"
+                  onClick={() => {
+                    loadSubscriptions();
+                    loadInsights();
+                  }}
+                >
+                  <RefreshCw size={15} />
+                  Refresh
+                </button>
               </div>
 
               <div className="stats-grid">
+
                 <div className="stat-card">
                   <span>Monthly Spending</span>
                   <h2>{formatMoney(monthly)}</h2>
@@ -688,87 +748,242 @@ function App() {
                   <span>Yearly Spending</span>
                   <h2>{formatMoney(yearly)}</h2>
                 </div>
+
+                <div className="stat-card">
+                  <span>Unused Subscriptions</span>
+                  <h2>{insights?.unused_subscriptions ?? 0}</h2>
+                </div>
+
+                <div className="stat-card">
+                  <span>Potential Savings</span>
+                  <h2>
+                    {formatMoney(
+                      insights?.potential_yearly_savings || 0
+                    )}
+                  </h2>
+                </div>
+
               </div>
 
-              <div className="panel">
-                <h3>Category-wise Spending</h3>
+              <div className="panel analytics-panel">
+                <div className="panel-heading">
+                  <div>
+                    <h3>Spending Breakdown</h3>
+                    <p>Monthly equivalent by subscription</p>
+                  </div>
+                </div>
 
-                {Object.entries(
-                  subscriptions.reduce((acc, sub) => {
-                    const category = sub.category || "Other";
-                    const amount =
+                {subscriptions.length === 0 ? (
+                  <p>Add subscriptions to see your analytics.</p>
+                ) : (
+
+                  subscriptions.map((sub) => {
+                    const monthlyAmount =
                       sub.billing_cycle === "yearly"
                         ? Number(sub.amount) / 12
                         : Number(sub.amount);
 
-                    acc[category] = (acc[category] || 0) + amount;
-                    return acc;
-                  }, {})
-                ).map(([category, amount]) => (
-                  <div key={category} style={{ margin: "20px 0" }}>
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: 8
-                    }}>
-                      <strong>{category}</strong>
-                      <span>{formatMoney(amount)}</span>
-                    </div>
+                    const percentage = monthly > 0
+                      ? (monthlyAmount / monthly) * 100
+                      : 0;
 
-                    <div style={{
-                      height: 9,
-                      background: "#292d40",
-                      borderRadius: 20,
-                      overflow: "hidden"
-                    }}>
-                      <div style={{
-                        height: "100%",
-                        width: `${monthly ? (amount / monthly) * 100 : 0}%`,
-                        background: "#8b70ff",
-                        borderRadius: 20
-                      }} />
-                    </div>
-                  </div>
-                ))}
+                    return (
+                      <div className="analytics-row" key={sub.id}>
+
+                        <div className="analytics-label">
+                          <span>{sub.name}</span>
+                          <strong>{formatMoney(monthlyAmount)}</strong>
+                        </div>
+
+                        <div className="progress-track">
+                          <div
+                            className="progress-fill"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+
+                      </div>
+                    );
+                  })
+
+                )}
+
               </div>
+
             </section>
           )}
 
-          {active === "Discover" && (
+          {/* SILENT LEAK DETECTOR */}
+
+          {active === "Silent Leak Detector" && (
             <section>
+
               <div className="welcome-section">
                 <div>
-                  <h1>Discover Subscriptions</h1>
+                  <p className="date-text">SMART MONEY ANALYSIS</p>
+                  <h1>Silent Leak Detector</h1>
                   <p className="welcome-subtitle">
-                    Search subscription plans, pricing and official websites.
+                    Find subscriptions that you no longer use.
+                  </p>
+                </div>
+
+                <button
+                  className="view-button"
+                  onClick={() => {
+                    loadSubscriptions();
+                    loadInsights();
+                  }}
+                >
+                  <RefreshCw size={15} /> Refresh
+                </button>
+              </div>
+
+              <div className="stats-grid">
+
+                <div className="stat-card">
+                  <span>Unused Subscriptions</span>
+                  <h2>{insights?.unused_subscriptions ?? 0}</h2>
+                </div>
+
+                <div className="stat-card">
+                  <span>Potential Yearly Savings</span>
+                  <h2 className="saving-amount">
+                    {formatMoney(
+                      insights?.potential_yearly_savings || 0
+                    )}
+                  </h2>
+                </div>
+
+              </div>
+
+              <div className="panel subscription-panel">
+                <div className="panel-heading">
+                  <div>
+                    <h3>Usage Tracker</h3>
+                    <p>Mark subscriptions you don't use.</p>
+                  </div>
+                </div>
+
+                <div className="subscription-list">
+
+                  {subscriptions.length === 0 ? (
+                    <p>No subscriptions found.</p>
+                  ) : (
+
+                    subscriptions.map((sub) => (
+                      <div
+                        className="subscription-item"
+                        key={sub.id}
+                      >
+
+                        <div className={`service-icon ${serviceColor(sub.name)}`}>
+                          {sub.name.charAt(0).toUpperCase()}
+                        </div>
+
+                        <div className="service-details">
+                          <h4>{sub.name}</h4>
+                          <p>{sub.category}</p>
+                        </div>
+
+                        <div className="payment-details">
+                          <h4>{formatMoney(sub.amount)}</h4>
+                          <p>{sub.billing_cycle}</p>
+                        </div>
+
+                        <span className={
+                          Number(sub.is_used) === 1
+                            ? "status-badge"
+                            : "unused-badge"
+                        }>
+                          {Number(sub.is_used) === 1
+                            ? "Used"
+                            : "Unused"}
+                        </span>
+
+                        <button
+                          className="usage-toggle"
+                          onClick={() =>
+                            handleUsageChange(
+                              sub.id,
+                              !Boolean(sub.is_used)
+                            )
+                          }
+                        >
+                          {Boolean(sub.is_used)
+                            ? "Mark Unused"
+                            : "Mark Used"}
+                        </button>
+
+                      </div>
+                    ))
+
+                  )}
+
+                </div>
+              </div>
+
+              <div className="panel savings-panel">
+                <Droplets size={25} />
+
+                <div>
+                  <h3>Your Potential Savings</h3>
+                  <h2>
+                    {formatMoney(
+                      insights?.potential_yearly_savings || 0
+                    )}
+                  </h2>
+                  <p>
+                    Estimated annual cost of subscriptions
+                    marked as unused.
                   </p>
                 </div>
               </div>
 
-              <div className="panel">
-                <form
-                  onSubmit={handleSearch}
-                  style={{
-                    display: "flex",
-                    gap: 12,
-                    flexWrap: "wrap"
-                  }}
-                >
-                  <input
-                    type="text"
-                    placeholder="Search Netflix, Spotify, YouTube..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                      flex: 1,
-                      minWidth: 180,
-                      padding: 14,
-                      borderRadius: 9,
-                      background: "#222535",
-                      color: "white",
-                      border: "1px solid #373b4e"
-                    }}
-                  />
+            </section>
+          )}
+
+          {/* DISCOVER PAGE */}
+
+          {active === "Discover" && (
+            <section>
+
+              <div className="welcome-section">
+                <div>
+                  <p className="date-text">EXPLORE THE WEB</p>
+                  <h1>Discover Subscriptions</h1>
+                  <p className="welcome-subtitle">
+                    Find plans, pricing and cancellation information.
+                  </p>
+                </div>
+              </div>
+
+              <div className="panel discover-search-panel">
+
+                <form onSubmit={handleSearch}>
+
+                  <div className="search-input-wrapper">
+                    <Search size={20} />
+
+                    <input
+                      type="text"
+                      placeholder="Search Netflix, Spotify, Adobe..."
+                      value={searchQuery}
+                      onChange={(e) =>
+                        setSearchQuery(e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <select
+                    value={searchType}
+                    onChange={(e) =>
+                      setSearchType(e.target.value)
+                    }
+                  >
+                    <option value="pricing">Pricing & Plans</option>
+                    <option value="cancellation">Cancellation Guide</option>
+                    <option value="alternatives">Alternatives</option>
+                  </select>
 
                   <button
                     type="submit"
@@ -778,91 +993,163 @@ function App() {
                     <Search size={18} />
                     {searchLoading ? "Searching..." : "Search"}
                   </button>
+
                 </form>
 
-                <div style={{ marginTop: 25 }}>
+                <p className="search-note">
+                  Search results are provided by Google through SerpAPI.
+                  Always verify details on the official website.
+                </p>
+
+              </div>
+
+              {searchLoading && (
+                <div className="panel">
+                  Searching the web...
+                </div>
+              )}
+
+              {!searchLoading && searchResults.length > 0 && (
+                <div className="discover-results">
+
+                  <div className="panel-heading">
+                    <div>
+                      <h3>Search Results</h3>
+                      <p>
+                        {searchResults.length} results found
+                      </p>
+                    </div>
+                  </div>
+
                   {searchResults.map((result, index) => (
                     <div
-                      key={index}
-                      className="subscription-item"
-                      style={{
-                        padding: "18px 0",
-                        borderBottom: "1px solid #303344"
-                      }}
+                      className="panel result-card"
+                      key={result.link || index}
                     >
-                      <div className="service-icon blue">
-                        {index + 1}
-                      </div>
 
-                      <div className="service-details">
-                        <h4>{result.title}</h4>
+                      <div>
+                        <h3>{result.title}</h3>
+
                         <p>{result.snippet}</p>
+
+                        <a
+                          href={result.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Visit Website
+                          <ExternalLink size={15} />
+                        </a>
                       </div>
 
-                      <a
-                        href={result.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: "#a18aff",
-                          textDecoration: "none"
-                        }}
-                      >
-                        Open <ExternalLink size={15} />
-                      </a>
                     </div>
                   ))}
 
-                  {!searchLoading &&
-                    searchQuery &&
-                    searchResults.length === 0 && (
-                      <p>No results found. Try another search.</p>
-                    )}
                 </div>
-              </div>
+              )}
+
+              {!searchLoading &&
+                searchResults.length === 0 &&
+                searchQuery.trim() === "" && (
+                  <div className="panel discover-empty">
+                    <Sparkles size={30} />
+                    <h3>Discover Something New</h3>
+                    <p>
+                      Search any subscription to explore its
+                      plans, pricing and alternatives.
+                    </p>
+                  </div>
+              )}
+
             </section>
           )}
 
+          {/* SETTINGS PAGE */}
+
+          {active === "Settings" && (
+            <section>
+
+              <div className="welcome-section">
+                <div>
+                  <p className="date-text">PREFERENCES</p>
+                  <h1>Settings</h1>
+                  <p className="welcome-subtitle">
+                    Manage your SilentSpend workspace.
+                  </p>
+                </div>
+              </div>
+
+              <div className="panel settings-panel">
+
+                <div className="settings-item">
+                  <ShieldCheck size={22} />
+                  <div>
+                    <h3>Data Storage</h3>
+                    <p>Your subscriptions are stored in SQLite.</p>
+                  </div>
+                  <span className="status-badge">Connected</span>
+                </div>
+
+                <div className="settings-item">
+                  <Search size={22} />
+                  <div>
+                    <h3>Discover Search</h3>
+                    <p>Web search powered by SerpAPI.</p>
+                  </div>
+                  <span className="status-badge">Enabled</span>
+                </div>
+
+                <div className="settings-item">
+                  <Activity size={22} />
+                  <div>
+                    <h3>Analytics</h3>
+                    <p>Calculated from saved subscriptions.</p>
+                  </div>
+                  <span className="status-badge">Active</span>
+                </div>
+
+                <div className="settings-item">
+                  <RefreshCw size={22} />
+                  <div>
+                    <h3>Refresh Data</h3>
+                    <p>Reload your subscription information.</p>
+                  </div>
+                  <button
+                    className="view-button"
+                    onClick={() => {
+                      loadSubscriptions();
+                      loadInsights();
+                    }}
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+              </div>
+
+            </section>
+          )}
+
+          {/* ADD SUBSCRIPTION MODAL */}
+
           {showForm && (
-            <div style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.78)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: 16
-            }}>
+            <div className="modal-overlay">
+
               <form
+                className="modal-box"
                 onSubmit={handleAdd}
-                style={{
-                  background: "#171923",
-                  border: "1px solid #303344",
-                  borderRadius: 16,
-                  padding: 24,
-                  width: "100%",
-                  maxWidth: 430,
-                  maxHeight: "90vh",
-                  overflowY: "auto",
-                  color: "white"
-                }}
               >
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 20
-                }}>
-                  <h2>Add Subscription</h2>
+
+                <div className="modal-header">
+                  <div>
+                    <h2>Add Subscription</h2>
+                    <p>Enter your subscription details.</p>
+                  </div>
+
                   <button
                     type="button"
+                    className="close-button"
                     onClick={() => setShowForm(false)}
-                    style={{
-                      background: "transparent",
-                      border: 0,
-                      color: "white"
-                    }}
                   >
                     <X />
                   </button>
@@ -871,13 +1158,15 @@ function App() {
                 <label>Subscription Name</label>
                 <input
                   type="text"
-                  placeholder="Netflix"
+                  placeholder="e.g. Netflix"
                   value={form.name}
                   onChange={(e) =>
-                    setForm({ ...form, name: e.target.value })
+                    setForm({
+                      ...form,
+                      name: e.target.value
+                    })
                   }
                   required
-                  style={formInputStyle}
                 />
 
                 <label>Amount (₹)</label>
@@ -885,22 +1174,26 @@ function App() {
                   type="number"
                   min="1"
                   step="0.01"
-                  placeholder="649"
+                  placeholder="Enter amount"
                   value={form.amount}
                   onChange={(e) =>
-                    setForm({ ...form, amount: e.target.value })
+                    setForm({
+                      ...form,
+                      amount: e.target.value
+                    })
                   }
                   required
-                  style={formInputStyle}
                 />
 
                 <label>Billing Cycle</label>
                 <select
                   value={form.billing_cycle}
                   onChange={(e) =>
-                    setForm({ ...form, billing_cycle: e.target.value })
+                    setForm({
+                      ...form,
+                      billing_cycle: e.target.value
+                    })
                   }
-                  style={formInputStyle}
                 >
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
@@ -917,16 +1210,17 @@ function App() {
                     })
                   }
                   required
-                  style={formInputStyle}
                 />
 
                 <label>Category</label>
                 <select
                   value={form.category}
                   onChange={(e) =>
-                    setForm({ ...form, category: e.target.value })
+                    setForm({
+                      ...form,
+                      category: e.target.value
+                    })
                   }
-                  style={formInputStyle}
                 >
                   <option>Entertainment</option>
                   <option>Music</option>
@@ -938,21 +1232,18 @@ function App() {
 
                 <button
                   type="submit"
-                  className="add-button"
-                  style={{
-                    width: "100%",
-                    justifyContent: "center",
-                    marginTop: 20
-                  }}
+                  className="add-button modal-submit"
+                  disabled={saving}
                 >
                   <Plus size={18} />
-                  Save Subscription
+                  {saving ? "Saving..." : "Save Subscription"}
                 </button>
+
               </form>
             </div>
           )}
 
-          <footer>
+          <footer className="app-footer">
             <span>© 2026 SilentSpend</span>
             <span>Track the money you don't notice.</span>
           </footer>
@@ -962,19 +1253,5 @@ function App() {
     </div>
   );
 }
-
-const formInputStyle = {
-  display: "block",
-  width: "100%",
-  boxSizing: "border-box",
-  padding: 12,
-  marginTop: 8,
-  marginBottom: 16,
-  borderRadius: 8,
-  border: "1px solid #373b4e",
-  background: "#222535",
-  color: "white",
-  outline: "none"
-};
 
 export default App;
