@@ -13,27 +13,57 @@ CORS(app)
 init_db()
 
 
+def ensure_usage_column():
+    conn = get_db()
+
+    columns = conn.execute(
+        "PRAGMA table_info(subscriptions)"
+    ).fetchall()
+
+    column_names = [column["name"] for column in columns]
+
+    if "is_used" not in column_names:
+        conn.execute("""
+            ALTER TABLE subscriptions
+            ADD COLUMN is_used INTEGER NOT NULL DEFAULT 1
+        """)
+
+    conn.commit()
+    conn.close()
+
+
+ensure_usage_column()
+
+
 @app.route("/")
 def home():
-    return jsonify({"message": "SilentSpend API is running"})
+    return jsonify({
+        "message": "SilentSpend API is running"
+    })
 
+
+# GET ALL SUBSCRIPTIONS
 
 @app.route("/api/subscriptions", methods=["GET"])
 def get_subscriptions():
     conn = get_db()
 
     subscriptions = conn.execute(
-        "SELECT * FROM subscriptions"
+        "SELECT * FROM subscriptions ORDER BY id DESC"
     ).fetchall()
 
     conn.close()
 
-    return jsonify([dict(item) for item in subscriptions])
+    return jsonify([
+        dict(item) for item in subscriptions
+    ])
 
+
+# ADD SUBSCRIPTION
 
 @app.route("/api/subscriptions", methods=["POST"])
 def add_subscription():
-    data = request.get_json()
+    data = request.get_json(silent=True)
 
     required = [
         "name",
@@ -42,8 +72,30 @@ def add_subscription():
         "next_payment_date"
     ]
 
-    if not data or any(not data.get(field) for field in required):
-        return jsonify({"error": "All required fields are needed"}), 400
+    if not data or any(
+        not data.get(field) for field in required
+    ):
+        return jsonify({
+            "error": "All required fields are needed"
+        }), 400
+
+    try:
+        amount = float(data["amount"])
+
+        if amount <= 0:
+            return jsonify({
+                "error": "Amount must be greater than zero"
+            }), 400
+
+    except (ValueError, TypeError):
+        return jsonify({
+            "error": "Invalid amount"
+        }), 400
+
+    if data["billing_cycle"] not in ["monthly", "yearly"]:
+        return jsonify({
+            "error": "Invalid billing cycle"
+        }), 400
 
     conn = get_db()
 
@@ -52,8 +104,8 @@ def add_subscription():
         (name, amount, billing_cycle, next_payment_date, category)
         VALUES (?, ?, ?, ?, ?)
     """, (
-        data["name"],
-        data["amount"],
+        data["name"].strip(),
+        amount,
         data["billing_cycle"],
         data["next_payment_date"],
         data.get("category", "Other")
@@ -69,7 +121,12 @@ def add_subscription():
     }), 201
 
 
-@app.route("/api/subscriptions/<int:subscription_id>", methods=["DELETE"])
+# DELETE SUBSCRIPTION
+
+@app.route(
+    "/api/subscriptions/<int:subscription_id>",
+    methods=["DELETE"]
+)
 def delete_subscription(subscription_id):
     conn = get_db()
 
@@ -83,55 +140,128 @@ def delete_subscription(subscription_id):
     conn.close()
 
     if deleted == 0:
-        return jsonify({"error": "Subscription not found"}), 404
+        return jsonify({
+            "error": "Subscription not found"
+        }), 404
 
-    return jsonify({"message": "Subscription deleted"})
+    return jsonify({
+        "message": "Subscription deleted"
+    })
 
+
+# UPDATE SUBSCRIPTION USAGE
+
+@app.route(
+    "/api/subscriptions/<int:subscription_id>/usage",
+    methods=["PATCH"]
+)
+def update_subscription_usage(subscription_id):
+    data = request.get_json(silent=True)
+
+    if not data or "is_used" not in data:
+        return jsonify({
+            "error": "is_used field is required"
+        }), 400
+
+    is_used = data["is_used"]
+
+    if not isinstance(is_used, bool):
+        return jsonify({
+            "error": "is_used must be true or false"
+        }), 400
+
+    conn = get_db()
+
+    cursor = conn.execute(
+        """
+        UPDATE subscriptions
+        SET is_used = ?
+        WHERE id = ?
+        """,
+        (1 if is_used else 0, subscription_id)
+    )
+
+    conn.commit()
+    updated = cursor.rowcount
+    conn.close()
+
+    if updated == 0:
+        return jsonify({
+            "error": "Subscription not found"
+        }), 404
+
+    return jsonify({
+        "message": "Subscription usage updated",
+        "is_used": is_used
+    })
+
+
+# SILENT LEAK DETECTOR INSIGHTS
+
+@app.route("/api/insights", methods=["GET"])
+def get_insights():
+    conn = get_db()
+
+    subscriptions = conn.execute(
+        "SELECT * FROM subscriptions"
+    ).fetchall()
+
+    conn.close()
+
+    total_yearly = 0
+    potential_savings = 0
+    unused_count = 0
+
+    for sub in subscriptions:
+        amount = float(sub["amount"])
+
+        if sub["billing_cycle"] == "yearly":
+            yearly_cost = amount
+        else:
+            yearly_cost = amount * 12
+
+        total_yearly += yearly_cost
+
+        if not sub["is_used"]:
+            potential_savings += yearly_cost
+            unused_count += 1
+
+    return jsonify({
+        "total_yearly_spending": round(total_yearly, 2),
+        "potential_yearly_savings": round(
+            potential_savings, 2
+        ),
+        "unused_subscriptions": unused_count,
+        "active_subscriptions": (
+            len(subscriptions) - unused_count
+        )
+    })
+
+
+# SERPAPI DISCOVER
 
 @app.route("/api/discover", methods=["GET"])
 def discover():
-
     query = request.args.get("q", "").strip()
-    category = request.args.get("type", "pricing").lower()
 
     if not query:
-        return jsonify({"error": "Search query is required"}), 400
-
-    if len(query) > 100:
-        return jsonify({"error": "Search query is too long"}), 400
-
-    search_types = {
-        "pricing": (
-            "subscription plans pricing India INR official website"
-        ),
-        "cancellation": (
-            "how to cancel subscription official cancellation guide India"
-        ),
-        "alternatives": (
-            "best alternatives similar services India subscription"
-        )
-    }
-
-    if category not in search_types:
-        return jsonify({"error": "Invalid search category"}), 400
+        return jsonify({
+            "error": "Search query is required"
+        }), 400
 
     api_key = os.getenv("SERPAPI_KEY")
 
     if not api_key:
-        return jsonify({"error": "SerpAPI key is missing"}), 500
-
-    search_query = f"{query} {search_types[category]}"
+        return jsonify({
+            "error": "SerpAPI key is missing"
+        }), 500
 
     try:
         response = requests.get(
             "https://serpapi.com/search.json",
             params={
                 "engine": "google",
-                "q": search_query,
-                "google_domain": "google.co.in",
-                "gl": "in",
-                "hl": "en",
-                "num": 8,
+                "q": f"{query} subscription plans pricing official website",
                 "api_key": api_key
             },
             timeout=20
@@ -140,26 +270,16 @@ def discover():
         response.raise_for_status()
         data = response.json()
 
-        if data.get("error"):
-            return jsonify({
-                "error": data["error"]
-            }), 502
-
         results = []
 
         for item in data.get("organic_results", [])[:8]:
             results.append({
                 "title": item.get("title", ""),
                 "link": item.get("link", ""),
-                "snippet": item.get("snippet", ""),
-                "source": item.get("source", ""),
-                "position": item.get("position")
+                "snippet": item.get("snippet", "")
             })
 
         return jsonify({
-            "query": query,
-            "category": category,
-            "country": "India",
             "results": results
         })
 
@@ -170,4 +290,7 @@ def discover():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(
+        debug=True,
+        port=5000
+    )
