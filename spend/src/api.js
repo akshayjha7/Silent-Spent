@@ -49,3 +49,32 @@ export async function discoverSubscriptions(query, type = "pricing") {
 
   return data.results;
 }
+
+export async function getInsights() {
+  const response = await fetch(`${API_URL}/api/insights`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load insights");
+  }
+
+  return response.json();
+}
+
+export async function updateSubscriptionUsage(id, is_used) {
+  const response = await fetch(
+    `${API_URL}/api/subscriptions/${id}/usage`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ is_used })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to update usage");
+  }
+
+  return response.json();
+}
