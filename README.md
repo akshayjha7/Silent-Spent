@@ -155,11 +155,3 @@ npm run dev
 |---|---|
 | [@akshayjha7](https://github.com/akshayjha7) | Repository Creator |
 | [@PrashUpdates](https://github.com/PrashUpdates) | Contributor |
-
-
-
-<p align="center">
-  <strong>💧 SilentSpend</strong>
-  <br/>
-  Track the Money You Don't Notice.
-</p>
