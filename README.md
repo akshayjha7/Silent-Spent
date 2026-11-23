@@ -169,7 +169,7 @@ npm run dev
 
 | Contributor | Role |
 |---|---|
-| [@akshayjhaa7](https://github.com/akshayjhaa7) | Repository Creator |
+| [@akshayjhaa7](https://github.com/akshayjha7) | Repository Creator |
 | [@PrashUpdates](https://github.com/PrashUpdates) | Contributor |
 
 ---
