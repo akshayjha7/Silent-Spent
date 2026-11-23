@@ -9,22 +9,27 @@
 
 <p align="center">
   <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=html,css,js,react,vite,python,flask,sqlite,cloudflare,vscode,git,github&perline=6" />
+    <img src="https://skillicons.dev/icons?i=html,css,js,react,vite,python,flask,sqlite,cloudflare,git,github,vscode&perline=6" />
   </a>
 </p>
 
 | Technology | Purpose |
 |---|---|
-| <img src="https://skillicons.dev/icons?i=react" width="20" /> **React.js** | Frontend |
-| <img src="https://skillicons.dev/icons?i=js" width="20" /> **JavaScript** | Application logic |
+| <img src="https://skillicons.dev/icons?i=html" width="20" /> **HTML5** | Page structure |
 | <img src="https://skillicons.dev/icons?i=css" width="20" /> **CSS3** | Styling |
+| <img src="https://skillicons.dev/icons?i=js" width="20" /> **JavaScript** | Application logic |
+| <img src="https://skillicons.dev/icons?i=react" width="20" /> **React.js** | Frontend |
+| <img src="https://skillicons.dev/icons?i=vite" width="20" /> **Vite** | Frontend build tool |
 | <img src="https://skillicons.dev/icons?i=python" width="20" /> **Python** | Backend |
 | <img src="https://skillicons.dev/icons?i=flask" width="20" /> **Flask** | REST API |
 | <img src="https://skillicons.dev/icons?i=sqlite" width="20" /> **SQLite** | Database |
+| <img src="https://skillicons.dev/icons?i=cloudflare" width="20" /> **Cloudflare Pages** | Frontend deployment |
+| <img src="https://skillicons.dev/icons?i=git" width="20" /> **Git** | Version control |
+| <img src="https://skillicons.dev/icons?i=github" width="20" /> **GitHub** | Code hosting |
+| <img src="https://skillicons.dev/icons?i=vscode" width="20" /> **VS Code** | Code editor |
 | 📊 **Recharts** | Analytics charts |
 | 🔍 **SerpAPI** | Google search integration |
 | 🔗 **Flask-CORS** | Frontend-backend communication |
-| <img src="https://skillicons.dev/icons?i=cloudflare" width="20" /> **Cloudflare Pages** | Frontend deployment |
 | 🚀 **Render** | Backend deployment |
 
 
@@ -148,7 +153,7 @@ npm run dev
 
 | Contributor | Role |
 |---|---|
-| [@akshayjhaa7](https://github.com/akshayjha7) | Repository Creator |
+| [@akshayjha7](https://github.com/akshayjha7) | Repository Creator |
 | [@PrashUpdates](https://github.com/PrashUpdates) | Contributor |
 
 
