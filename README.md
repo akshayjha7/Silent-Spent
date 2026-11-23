@@ -156,15 +156,6 @@ npm run dev
 
 ---
 
-## 🌐 Live Deployment
-
-| Service | Link |
-|---|---|
-| 🖥️ Frontend | [YOUR_CLOUDFLARE_URL](YOUR_CLOUDFLARE_URL) |
-| ⚙️ Backend | [silent-spent-backend.onrender.com](https://silent-spent-backend.onrender.com) |
-
----
-
 ## 👨‍💻 Contributors
 
 | Contributor | Role |
