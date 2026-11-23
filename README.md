@@ -4,17 +4,29 @@
   <strong>Track the Money You Don't Notice.</strong>
 </p>
 
-<p align="center">
-  <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=react,vite,python,flask,sqlite,cloudflare&perline=6" />
-  </a>
-</p>
+---
+
+## 🛠️ Tech Stack
 
 <p align="center">
   <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=html,css,js,vscode,git,github&perline=6" />
+    <img src="https://skillicons.dev/icons?i=html,css,js,react,vite,python,flask,sqlite,cloudflare,vscode,git,github&perline=6" />
   </a>
 </p>
+
+| Technology | Purpose |
+|---|---|
+| **React.js** | Frontend |
+| **JavaScript** | Application logic |
+| **CSS3** | Styling |
+| **Python** | Backend |
+| **Flask** | REST API |
+| **SQLite** | Database |
+| **Recharts** | Analytics charts |
+| **SerpAPI** | Google search integration |
+| **Flask-CORS** | Frontend-backend communication |
+| **Cloudflare Pages** | Frontend deployment |
+| **Render** | Backend deployment |
 
 ---
 
@@ -34,24 +46,6 @@
 | 💧 **Silent Leak Detector** | Identify unused subscriptions and calculate potential yearly savings |
 | 🔍 **Discover** | Search subscription services and explore websites using SerpAPI |
 | 📅 **Payment Tracking** | Keep track of upcoming subscription payments |
-
----
-
-## 🛠️ Tech Stack
-
-| Technology | Purpose |
-|---|---|
-| <img src="https://skillicons.dev/icons?i=react" width="20" /> **React.js** | Frontend |
-| <img src="https://skillicons.dev/icons?i=js" width="20" /> **JavaScript** | Application logic |
-| <img src="https://skillicons.dev/icons?i=css" width="20" /> **CSS3** | Styling |
-| <img src="https://skillicons.dev/icons?i=python" width="20" /> **Python** | Backend |
-| <img src="https://skillicons.dev/icons?i=flask" width="20" /> **Flask** | REST API |
-| <img src="https://skillicons.dev/icons?i=sqlite" width="20" /> **SQLite** | Database |
-| 📊 **Recharts** | Analytics charts |
-| 🔍 **SerpAPI** | Google search integration |
-| 🔗 **Flask-CORS** | Frontend-backend communication |
-| <img src="https://skillicons.dev/icons?i=cloudflare" width="20" /> **Cloudflare Pages** | Frontend deployment |
-| 🚀 **Render** | Backend deployment |
 
 ---
 
