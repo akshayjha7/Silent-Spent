@@ -4,7 +4,6 @@
   <strong>Track the Money You Don't Notice.</strong>
 </p>
 
----
 
 ## 🛠️ Tech Stack
 
@@ -28,13 +27,13 @@
 | **Cloudflare Pages** | Frontend deployment |
 | **Render** | Backend deployment |
 
----
+
 
 ## 📖 About
 
 **SilentSpend** is a smart subscription management platform that helps users track recurring expenses, manage subscriptions, analyze spending, and identify potential savings.
 
----
+
 
 ## ✨ Features
 
@@ -47,7 +46,7 @@
 | 🔍 **Discover** | Search subscription services and explore websites using SerpAPI |
 | 📅 **Payment Tracking** | Keep track of upcoming subscription payments |
 
----
+
 
 ## 🔍 SerpAPI Integration
 
@@ -58,7 +57,7 @@ SerpAPI powers the **Discover** feature.
 - Retrieves up to 8 results
 - Displays titles, descriptions and website links
 
----
+
 
 ## 🏗️ Project Structure
 
@@ -83,7 +82,7 @@ SilentSpend/
 └── README.md
 ```
 
----
+
 
 ## ⚙️ Installation & Setup
 
@@ -129,7 +128,7 @@ Open another terminal in the main project folder:
 npm run dev
 ```
 
----
+
 
 ## 🔌 API Endpoints
 
@@ -143,7 +142,7 @@ npm run dev
 | `GET` | `/api/insights` | Get financial insights |
 | `GET` | `/api/discover?q=Netflix` | Search subscriptions |
 
----
+
 
 ## 👨‍💻 Contributors
 
@@ -152,7 +151,7 @@ npm run dev
 | [@akshayjhaa7](https://github.com/akshayjha7) | Repository Creator |
 | [@PrashUpdates](https://github.com/PrashUpdates) | Contributor |
 
----
+
 
 <p align="center">
   <strong>💧 SilentSpend</strong>
