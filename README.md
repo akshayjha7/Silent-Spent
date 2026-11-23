@@ -1,7 +1,9 @@
 <h1 align="center">💧 SilentSpend</h1>
 
 <p align="center">
-  <strong>Track the Money You Don't Notice.</strong>
+  <a href="https://git.io/typing-svg">
+    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=20&pause=1500&color=2F81F7&center=true&vCenter=true&width=520&lines=Track+the+Money+You+Don%27t+Notice;Manage+Subscriptions+Smartly;Find+Silent+Leaks+%26+Save+More" alt="Typing animation" />
+  </a>
 </p>
 
 <p align="center">
@@ -19,6 +21,16 @@
   <img src="https://img.shields.io/badge/Render-46E3B7?style=flat-square&logo=render&logoColor=black" />
   <img src="https://img.shields.io/badge/SerpAPI-4285F4?style=flat-square&logo=google&logoColor=white" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Maintained%3F-Yes-brightgreen?style=for-the-badge&logo=github" alt="Maintained" />
+</p>
+
+<p align="center">
+  <a href="https://skillicons.dev">
+    <img src="https://skillicons.dev/icons?i=html,css,js,react,python,flask,sqlite,vscode,git,github" />
+  </a>
 </p>
 
 ---
