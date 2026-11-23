@@ -1,9 +1,7 @@
 <h1 align="center">💧 SilentSpend</h1>
 
 <p align="center">
-  <a href="https://git.io/typing-svg">
-    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=17&pause=1500&color=2F81F7&center=true&vCenter=true&width=520&lines=Track+the+Money+You+Don%27t+Notice;Manage+Subscriptions+Smartly;Find+Silent+Leaks+%26+Save+More" alt="Typing animation" />
-  </a>
+  <strong>Track the Money You Don't Notice.</strong>
 </p>
 
 <p align="center">
