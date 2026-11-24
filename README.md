@@ -64,6 +64,25 @@ SerpAPI powers the **Discover** feature.
 
 
 
+## 🏆 Hackathon
+
+SilentSpend was built during **BEYOND 9TO5 – Buildathon (Mumbai Edition)**, an 8-hour offline buildathon for working professionals, organized by **EtriqAI**.
+
+| Detail | Info |
+|---|---|
+| 🎯 **Event** | BEYOND 9TO5 – Buildathon |
+| 📅 **Date** | 22 November 2026 |
+| ⏱️ **Duration** | 8 hours |
+| 👥 **Team Size** | Solo or 1–4 members |
+| 🧑‍🤝‍🧑 **Participants** | 150 selected participants |
+| 🤝 **Our Team** | 2 members |
+
+**The idea:** Many people forget about small recurring subscriptions that quietly drain their money. We built SilentSpend within the 8-hour buildathon to turn that problem into a working prototype that tracks subscriptions and highlights silent leaks.
+
+**Ecosystem partners:** Paytm AI, you.com, Tavily, Oriane, Nexconn
+
+
+
 ## 🏗️ Project Structure
 
 ```
